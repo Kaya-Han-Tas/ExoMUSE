@@ -1,0 +1,17 @@
+mstar			Normal		0.563,0.029	#
+mp			Uniform		0.01,5.00	#
+P_p1			Normal		1.440445270,0.000000087	#
+tp_p1			Normal		2459952.288940,0.000039	#
+ecc_p1			Uniform		0.0,0.1	#
+omega_p1		Uniform		0.0,360.	#
+a_p1			Normal		0.02065,0.00035
+K_p1			Uniform		750.,900.	#
+gamma			Uniform		0.,10000.	#
+sigma_rv		Uniform		0.0,1000.        	#
+gammadot		FIXED		0.          #
+gammadotdot		FIXED		0.          #
+#a_p1			Normal		2.1663514481,0.2412670390
+#b_p1			Normal		0.4742543318,0.1946947678
+#p_p1			Normal		0.0209609696,0.0008676171
+#rho			Normal		3826.3465481647,1141.3342539296
+#mp			Uniform		0.003,0.300	#Issue
