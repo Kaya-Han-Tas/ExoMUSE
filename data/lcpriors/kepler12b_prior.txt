@@ -1,0 +1,21 @@
+P_p1			Normal			4.4379629,0.00006
+a_p1			Normal		 	8.019,0.014
+t0_p1              	Normal			2455004.00915,0.00001
+ecc_p1			Uniform			0.0,0.1
+omega_p1		Uniform			0.0,360.
+b_p1			Uniform			0.0,1.0
+p_p1			Normal			0.118867,0.000094
+tdur_p1			Normal			4.70104,0.00092
+u1			Uniform			0.0,1.0
+u2			Uniform			0.0,1.0
+gamma			Normal			7.3,4.7
+exptime			Uniform			0.0,30000.
+sigma_rv		Uniform			0.0,100.
+#
+#q1_TESS		Normal			0.5811066128,0.2221143040
+#q2_TESS		Normal			0.2289373128,0.2389240269
+#mflux_TESS		Normal			-0.0000557062,0.0000327168
+#sigma_w_TESS		Normal			177.5546755382,9.9969849907
+#GP_sigma_TESS		Normal			0.0002715330,0.0000209629
+#GP_rho_TESS		Normal			0.6816703720,0.0880959830
+#rho			Normal			3826.3465481647,1141.3342539296

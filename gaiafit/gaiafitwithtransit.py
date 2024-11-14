@@ -3303,3 +3303,246 @@ class LPFunctionRM(object):
         log_of_model  = ll_normal_ev_py(y_data, y_model, error)
         log_ln = log_of_priors + log_of_model
         return log_ln
+
+#RM + Light Curve Joint Fitting
+class LPFunction1RM1Phot(object):
+    """
+    Log-Likelihood function class
+    """
+    def __init__(self,inp,file_priors):
+        """
+        INPUT:
+            x - time values in BJD
+            y - y values in m/s
+            yerr - yerr values in m/s
+            file_priors - prior file name
+        """
+        self.data_rv1= {"time"   : inp['time_rv1'],  
+                        "y"      : inp['rv_rv1'],   
+                        "error"  : inp['e_rv1']}
+        self.data_tr1= {"time"   : inp['time_tr1'],  
+                        "y"      : inp['f_tr1'],   
+                        "error"  : inp['e_tr1']}
+        # Setting priors
+        self.ps_all = priorset_from_file(file_priors) # all priors
+        self.ps_fixed = PriorSet(np.array(self.ps_all.priors)[np.array(self.ps_all.fixed)]) # fixed priorset
+        self.ps_vary  = PriorSet(np.array(self.ps_all.priors)[~np.array(self.ps_all.fixed)]) # varying priorset
+        self.ps_fixed_dict = {key: val for key, val in zip(self.ps_fixed.labels,self.ps_fixed.args1)}
+        print('Reading in priorfile from {}'.format(file_priors))
+        print(self.ps_all.df)
+        
+    def get_jump_parameter_index(self,lab):
+        """
+        Get the index of a given label
+        """
+        return np.where(np.array(self.ps_vary.labels)==lab)[0][0]
+    
+    def get_jump_parameter_value(self,pv,lab):
+        """
+        Get the current value in the argument list 'pv' that has label 'lab'
+        """
+        # First check if we are actually varying it
+        if lab in self.ps_vary.labels:
+            return pv[self.get_jump_parameter_index(lab)]
+        else:
+            # We are not varying it
+            return self.ps_fixed_dict[lab]
+        
+    def compute_rm_model(self,pv,times1=None):
+        """
+        Calls RM model and returns the transit model
+        
+        INPUT:
+            pv    - parameters passed to the function 
+            times - times, and array of timestamps 
+        
+        OUTPUT:
+            lc - the lightcurve model at *times*
+        """
+        T0      =self.get_jump_parameter_value(pv,'t0_p1')
+        P       =self.get_jump_parameter_value(pv,'P_p1')
+        lam     =self.get_jump_parameter_value(pv,'lam_p1')
+        #cosi    = self.get_jump_parameter_value(pv,'cosi')
+        #R       = self.get_jump_parameter_value(pv,'rstar')
+        #Prot    = self.get_jump_parameter_value(pv,'Prot')
+        #veq = (2.*np.pi*R*aconst.R_sun.value)/(Prot*86400.*1000.) # km/s
+        #vsini   = veq*np.sqrt(1.-cosi**2.)
+        vsini   =self.get_jump_parameter_value(pv,'vsini') 
+        ii      =self.get_jump_parameter_value(pv,'inc_p1')
+        rprs    =self.get_jump_parameter_value(pv,'p_p1')
+        aRs     =self.get_jump_parameter_value(pv,'a_p1')
+        u1      =self.get_jump_parameter_value(pv,'u1_rv1')
+        u2      =self.get_jump_parameter_value(pv,'u2_rv1')
+        #q1      =self.get_jump_parameter_value(pv,'q1')
+        #q2      =self.get_jump_parameter_value(pv,'q2')
+        #u1, u2 = u1_u2_from_q1_q2(q1,q2)
+        beta    =self.get_jump_parameter_value(pv,'vbeta')
+        #sigma   =self.get_jump_parameter_value(pv,'sigma')
+        sigma   = vsini /1.31 # assume sigma is vsini/1.31 (see Hirano et al. 2010, 2011)
+        e       =self.get_jump_parameter_value(pv,'ecc_p1')
+        omega   =self.get_jump_parameter_value(pv,'omega_p1')
+        exptime1=self.get_jump_parameter_value(pv,'exptime_rv1')/86400. # exptime in days
+        if times1 is None: 
+            times1 = self.data_rv1["time"]
+        self.rm1 = RMHirano(lam,vsini,P,T0,aRs,ii,rprs,e,omega,[u1,u2],beta,
+                            sigma,supersample_factor=7,exp_time=exptime1,limb_dark='quadratic').evaluate(times1)
+        return self.rm1
+
+    def compute_transit_model(self,pv,times1=None):
+        """
+        Calls BATMAN and returns the transit model
+        """
+        T0     =self.get_jump_parameter_value(pv,'t0_p1')
+        P      =self.get_jump_parameter_value(pv,'P_p1')
+        ii     =self.get_jump_parameter_value(pv,'inc_p1')
+        rprs   =self.get_jump_parameter_value(pv,'p_p1')
+        aRs    =self.get_jump_parameter_value(pv,'a_p1')
+        e      =self.get_jump_parameter_value(pv,'ecc_p1')
+        omega  =self.get_jump_parameter_value(pv,'omega_p1')
+        u1     =self.get_jump_parameter_value(pv,'u1_tr1')
+        u2     =self.get_jump_parameter_value(pv,'u1_tr1')
+        u = [u1,u2]
+        mflux  =self.get_jump_parameter_value(pv,'mflux_tr1')
+        exptime=self.get_jump_parameter_value(pv,'exptime_tr1')/86400. # exptime in days
+        if times1 is None:
+            times1 = self.data_tr1["time"]
+        self.lc = get_lc_batman(times1,T0,P,ii,rprs,aRs,e,omega,u,supersample_factor=7,exp_time=exptime,limbdark="quadratic")*mflux
+        return self.lc
+
+    def compute_polynomial_transit_model(self,pv,times1=None):
+        """
+        Compute the polynomial model.  Note that if gammadot and gammadotdot
+        are not specified in the priors file, they both default to zero.
+
+        INPUT:
+            pv    - a list of parameters (only parameters that are being varied)
+            times - times (optional), array of timestamps
+
+        OUTPUT:
+            poly - the polynomial model evaluated at 'times' if supplied,
+                   otherwise defaults to original data timestamps
+        """
+        if times1 is None:
+            times1 = self.data_tr1["time"]
+
+        T0 = (self.data_tr1['time'][0] + self.data_tr1['time'][-1])/2.
+        try:
+            mfluxdot = self.get_jump_parameter_value(pv,'mfluxdot_tr1')
+        except KeyError as e:
+            mfluxdot = 0
+        try:
+            mfluxdotdot = self.get_jump_parameter_value(pv,'mfluxdotdot_tr1')
+        except KeyError as e:
+            mfluxdotdot = 0
+
+        self.poly = (
+            mfluxdot * (times1 - T0) +
+            mfluxdotdot * (times1 - T0)**2
+        )
+        return self.poly
+
+    def compute_rv_model(self,pv,times1=None):
+        """
+        Compute the RV model
+
+        INPUT:
+            pv    - a list of parameters (only parameters that are being varied)
+            times - times (optional), array of timestamps 
+        
+        OUTPUT:
+            rv - the rv model evaluated at 'times' if supplied, otherwise 
+                      defaults to original data timestamps
+        """
+        if times1 is None: times1 = self.data_rv1["time"]
+        T0      = self.get_jump_parameter_value(pv,'t0_p1')
+        P       = self.get_jump_parameter_value(pv,'P_p1')
+        gamma1  = self.get_jump_parameter_value(pv,'gamma_rv1')
+        K       = self.get_jump_parameter_value(pv,'K_p1')
+        e       = self.get_jump_parameter_value(pv,'ecc_p1')
+        w       = self.get_jump_parameter_value(pv,'omega_p1')
+        self.rv1 = get_rv_curve(times1,P=P,tc=T0,e=e,omega=w,K=K)+gamma1
+        return self.rv1
+        
+    def compute_total_model(self,pv,times_tr1=None,times_rv1=None):
+        """
+        Computes the full RM model (including RM and RV and CB)
+
+        INPUT:
+            pv    - a list of parameters (only parameters that are being varied)
+            times - times (optional), array of timestamps 
+        
+        OUTPUT:
+            rm - the rm model evaluated at 'times' if supplied, otherwise 
+                      defaults to original data timestamps
+
+        NOTES:
+            see compute_rm_model(), compute_rv_model()
+        """
+        rv1 = self.compute_rm_model(pv,times1=times_rv1) + self.compute_rv_model(pv,times1=times_rv1) 
+        ff1 = self.compute_transit_model(pv,times1=times_tr1)
+        ff1_trend = self.compute_polynomial_transit_model(pv,times1=times_tr1)
+        return rv1, ff1 + ff1_trend
+
+    def __call__(self,pv):
+        """
+        Return the log likelihood
+
+        INPUT:
+            pv - the input list of varying parameters
+        """
+        if any(pv < self.ps_vary.pmins) or any(pv>self.ps_vary.pmaxs):
+            return -np.inf
+
+        ii =self.get_jump_parameter_value(pv,'inc_p1')
+        if ii > 90:
+            return -np.inf
+
+        ###############
+        # Prepare data and model and error for ingestion into likelihood
+        #y_data = self.data['y']
+        rv1, ff1 = self.compute_total_model(pv)
+        # jitter in quadrature
+        jitter_rv1 = self.get_jump_parameter_value(pv,'sigma_rv1')
+        jitter_tr1 = self.get_jump_parameter_value(pv,'sigma_tr1')
+        error_rv1 = np.sqrt(self.data_rv1['error']**2.+jitter_rv1**2.)
+        error_tr1 = np.sqrt(self.data_tr1['error']**2.+jitter_tr1**2.)
+        ###############
+
+        # Return the log-likelihood
+        log_of_priors = self.ps_vary.c_log_prior(pv)
+        # Calculate log likelihood
+        #log_of_model  = ll_normal_ev_py(y_data, y_model, error)
+        log_of_model1  = ll_normal_ev_py(self.data_rv1["y"], rv1, error_rv1)
+        log_of_model2  = ll_normal_ev_py(self.data_tr1["y"], ff1, error_tr1)
+        log_ln = log_of_priors + log_of_model1 + log_of_model2 
+        return log_ln
+                    
+
+def transit_time_from_ephem(tobs,P,T0,verbose=False):
+    """
+    Get difference between observed transit time and the 
+    
+    INPUT:
+        tobs - observed transit time
+        P - period in days
+        T0 - ephem transit midpoint
+        
+    OUTPUT:
+        T_expected in days
+        
+    EXAMPLE:
+        P = 3.336649
+        T0 = 2456340.72559
+        x = [2456340.72559,2458819.8585888706,2458839.8782432866]
+        y = np.copy(x)
+        yerr = [0.00010,0.0002467413,0.0004495690]
+        model = get_expected_transit_time_from_ephem(x,P,T0,verbose=True)
+
+        fig, ax = plt.subplots(dpi=200)
+        ax.errorbar(x,y,yerr,marker='o',lw=0,mew=0.5,capsize=4,elinewidth=0.5,)
+    """
+    n = np.round((tobs-T0)/P)
+    if verbose:
+        print('n={}'.format(n))
+    T_expected = P*n+T0
+    return T_expected
