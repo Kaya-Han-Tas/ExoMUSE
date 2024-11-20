@@ -2580,6 +2580,12 @@ def u1_u2_from_q1_q2(q1,q2):
 def b_from_aRs_and_i(aRs,i):
     return aRs*np.cos(np.deg2rad(i))
 
+###########################################################################################################################################################################################
+###########################################################################################################################################################################################
+###########################################################################################################################################################################################
+###########################################################################################################################################################################################
+###########################################################################################################################################################################################
+
 #The Transit Addition
 def get_lc_batman(times,t0,P,i,rprs,aRs,e,omega,u,supersample_factor=1,exp_time=0.,limbdark="quadratic"):
     """
@@ -3546,3 +3552,346 @@ def transit_time_from_ephem(tobs,P,T0,verbose=False):
         print('n={}'.format(n))
     T_expected = P*n+T0
     return T_expected
+
+
+############################################################################################################################################################################################
+############################################################################################################################################################################################
+############################################################################################################################################################################################
+############################################################################################################################################################################################
+
+class TransitFit(object):
+    """
+    A class that does Transit fitting.
+
+    NOTES:
+        - Needs to have LPFunction defined
+    """
+    def __init__(self,LPFunction):
+        self.lpf = LPFunction
+
+    def minimize_AMOEBA(self):
+        centers = np.array(self.lpf.ps_vary.centers)
+
+        def neg_lpf(pv):
+            return -1.*self.lpf(pv)
+        self.min_pv = minimize(neg_lpf,centers,method='Nelder-Mead',tol=1e-9,
+                                   options={'maxiter': 100000, 'maxfev': 10000, 'disp': True}).x
+
+    def minimize_PyDE(self,npop=100,de_iter=200,mc_iter=1000,mcmc=True,threads=8,maximize=True,plot_priors=True,sample_ball=False,k=None,n=None):
+        """
+        Minimize using the PyDE
+
+        NOTES:
+            see https://github.com/hpparvi/PyDE
+        """
+        centers = np.array(self.lpf.ps_vary.centers)
+        print("Running PyDE Optimizer")
+        self.de = de.DiffEvol(self.lpf, self.lpf.ps_vary.bounds, npop, maximize=maximize) # we want to maximize the likelihood
+        self.min_pv, self.min_pv_lnval = self.de.optimize(ngen=de_iter)
+        print("Optimized using PyDE")
+        print("Final parameters:")
+        self.print_param_diagnostics(self.min_pv)
+        #self.lpf.ps.plot_all(figsize=(6,4),pv=self.min_pv)
+        print("LogPost value:",-1*self.min_pv_lnval)
+        self.lnl_max  = -1*self.min_pv_lnval-self.lpf.ps_vary.c_log_prior(self.min_pv)
+        print("LnL value:",self.lnl_max)
+        print("Log priors",self.lpf.ps_vary.c_log_prior(self.min_pv))
+        if k is not None and n is not None:
+            print("BIC:",stats_help.bic_from_likelihood(self.lnl_max,k,n))
+            print("AIC:",stats_help.aic(k,self.lnl_max))
+        if mcmc:
+            print("Running MCMC")
+            self.sampler = emcee.EnsembleSampler(npop, self.lpf.ps_vary.ndim, self.lpf,threads=threads)
+
+            #pb = ipywidgets.IntProgress(max=mc_iter/50)
+            #display(pb)
+            #val = 0
+            print("MCMC iterations=",mc_iter)
+            for i,c in enumerate(self.sampler.sample(self.de.population,iterations=mc_iter)):
+                print(i,end=" ")
+                #if i%50 == 0:
+                    #val+=50.
+                    #pb.value += 1
+            print("Finished MCMC")
+            self.min_pv_mcmc = self.get_mean_values_mcmc_posteriors().medvals.values
+
+    def get_mean_values_mcmc_posteriors(self,flatchain=None):
+        """
+        Get the mean values from the posteriors
+
+            flatchain - if not passed, then will default using the full flatchain (will likely include burnin)
+
+        EXAMPLE:
+        """
+        if flatchain is None:
+            flatchain = self.sampler.flatchain
+            print('No flatchain passed, defaulting to using full chains')
+        df_list = [utils.get_mean_values_for_posterior(flatchain[:,i],label,description) for i,label,description in zip(range(len(self.lpf.ps_vary.descriptions)),self.lpf.ps_vary.labels,self.lpf.ps_vary.descriptions)]
+        return pd.concat(df_list)
+
+    def print_param_diagnostics(self,pv):
+        """
+        A function to print nice parameter diagnostics.
+        """
+        self.df_diagnostics = pd.DataFrame(zip(self.lpf.ps_vary.labels,self.lpf.ps_vary.centers,self.lpf.ps_vary.bounds[:,0],self.lpf.ps_vary.bounds[:,1],pv,self.lpf.ps_vary.centers-pv),columns=["labels","centers","lower","upper","pv","center_dist"])
+        print(self.df_diagnostics.to_string())
+        return self.df_diagnostics
+
+    def plot_fit(self,pv=None,times=None):
+        """
+        Plot the model curve for a given set of parameters pv
+
+        INPUT:
+            pv - an array containing a sample draw of the parameters defined in self.lpf.ps_vary
+               - will default to best-fit parameters if none are supplied
+        """
+        if pv is None:
+            print('Plotting curve with best-fit values')
+            pv = self.min_pv
+        x = self.lpf.data['x']
+        y = self.lpf.data['y']
+        jitter = self.lpf.get_jump_parameter_value(pv,'sigma_rv')
+        yerr = np.sqrt(self.lpf.data['error']**2.+jitter**2.)
+        model_obs = self.lpf.compute_total_model(pv)
+        residuals = y-model_obs
+            
+        model = self.lpf.compute_total_model(pv)
+        residuals = y-model
+
+        # Plot
+        nrows = 2
+        self.fig, self.ax = plt.subplots(nrows=nrows,sharex=True,figsize=(10,6),gridspec_kw={'height_ratios': [5, 2]})
+        self.ax[0].errorbar(x,y,yerr=yerr,elinewidth=1,lw=0,alpha=1,capsize=5,mew=1,marker="o",barsabove=True,markersize=8,label="Data")
+        if times is not None:
+            model = self.lpf.compute_total_model(pv,times=times)
+            self.ax[0].plot(times,model,label="Model",color='crimson')
+        else:
+            self.ax[0].plot(x,model_obs,label="Model",color='crimson')
+            
+        self.ax[1].errorbar(x,residuals,yerr=yerr,elinewidth=1,lw=0,alpha=1,capsize=5,mew=1,marker="o",barsabove=True,markersize=8,
+                            label="Residuals, std="+str(np.std(residuals)))
+        for xx in self.ax:
+            xx.minorticks_on()
+            xx.legend(loc='lower left',fontsize=9)
+            xx.set_ylabel("RV [m/s]",labelpad=2)
+        self.ax[-1].set_xlabel("Time (BJD)",labelpad=2)
+        self.ax[0].set_title("RM Effect")
+        self.fig.subplots_adjust(wspace=0.05,hspace=0.05)
+
+    def plot_mcmc_fit(self,times=None):
+        df = self.get_mean_values_mcmc_posteriors()
+        print('Plotting curve with best-fit mcmc values')
+        self.plot_fit(pv=df.medvals.values)
+
+class LPFunctionLC(object):
+    """
+    Log-Likelihood function class
+
+    NOTES:
+        Based on hpprvi's class, see: https://github.com/hpparvi/exo_tutorials
+    """
+    def __init__(self,x,y,yerr,file_priors,airmass=None):
+        """
+        INPUT:
+            x - time values in BJD
+            y - normalized flux
+            yerr - error on normalized flux
+            file_priors - prior file name
+        """
+        self.data= {"x"   : x,
+                    "y"   : y,
+                    "error"  : yerr,
+                    "airmass" : airmass}
+        # Setting priors
+        self.ps_all = priorset_from_file(file_priors) # all priors
+        self.ps_fixed = PriorSet(np.array(self.ps_all.priors)[np.array(self.ps_all.fixed)]) # fixed priorset
+        self.ps_vary  = PriorSet(np.array(self.ps_all.priors)[~np.array(self.ps_all.fixed)]) # varying priorset
+        self.ps_fixed_dict = {key: val for key, val in zip(self.ps_fixed.labels,self.ps_fixed.args1)}
+        print('Reading in priorfile from {}'.format(file_priors))
+        print(self.ps_all.df)
+
+    def get_jump_parameter_index(self,lab):
+        """
+        Get the index of a given label
+        """
+        return np.where(np.array(self.ps_vary.labels)==lab)[0][0]
+
+    def get_jump_parameter_value(self,pv,lab):
+        """
+        Get the current value in the argument list 'pv' that has label 'lab'
+        """
+        # First check if we are actually varying it
+        if lab in self.ps_vary.labels:
+            return pv[self.get_jump_parameter_index(lab)]
+        else:
+            # We are not varying it
+            return self.ps_fixed_dict[lab]
+
+    def compute_transit_model_main(self,pv,times=None):
+        """
+        Calls RM model and returns the transit model
+
+        INPUT:
+            pv    - parameters passed to the function
+            times - times, and array of timestamps
+
+        OUTPUT:
+            lc - the lightcurve model at *times*
+        """
+        T0     =self.get_jump_parameter_value(pv,'t0_p1')
+        P      =self.get_jump_parameter_value(pv,'P_p1')
+        ii     =self.get_jump_parameter_value(pv,'inc_p1')
+        rprs   =self.get_jump_parameter_value(pv,'p_p1')
+        aRs    =self.get_jump_parameter_value(pv,'a_p1')
+        u1     =self.get_jump_parameter_value(pv,'u1')
+        u2     =self.get_jump_parameter_value(pv,'u2')
+        u = [u1,u2]
+        gamma  =self.get_jump_parameter_value(pv,'gamma')
+        e      =self.get_jump_parameter_value(pv,'ecc_p1')
+        omega  =self.get_jump_parameter_value(pv,'omega_p1')
+        exptime=self.get_jump_parameter_value(pv,'exptime')/86400. # exptime in days
+        if times is None:
+            times = self.data["x"]
+        self.lc = get_lc_batman(times,T0,P,ii,rprs,aRs,e,omega,u,supersample_factor=7,exp_time=exptime,limbdark="quadratic")
+        return self.lc + gamma
+
+    def compute_transit_model(self,pv,times=None):
+        """
+        Calls RM model and returns the transit model
+
+        INPUT:
+            pv    - parameters passed to the function
+            times - times, and array of timestamps
+
+        OUTPUT:
+            lc - the lightcurve model at *times*
+        """
+        T0     =self.get_jump_parameter_value(pv,'t0_p1')
+        P      =self.get_jump_parameter_value(pv,'P_p1')
+        tdur   =self.get_jump_parameter_value(pv,'tdur_p1')
+        b      =self.get_jump_parameter_value(pv,'b_p1')
+        rprs   =self.get_jump_parameter_value(pv,'p_p1')
+        u1     =self.get_jump_parameter_value(pv,'u1')
+        u2     =self.get_jump_parameter_value(pv,'u2')
+        #q1     =self.get_jump_parameter_value(pv,'q1')
+        #q2     =self.get_jump_parameter_value(pv,'q2')
+        #u1, u2 = u1_u2_from_q1_q2(q1,q2)
+        u = [u1,u2]
+        gamma  =self.get_jump_parameter_value(pv,'gamma')
+        e      =self.get_jump_parameter_value(pv,'ecc_p1')
+        omega  =self.get_jump_parameter_value(pv,'omega_p1')
+        aRs    = calc_aRs_from_rprs_b_tdur_P(rprs,b,tdur,P)
+        ii     = i_from_aRs_and_b(aRs,b)
+        exptime=self.get_jump_parameter_value(pv,'exptime')/86400. # exptime in days
+        if times is None:
+            times = self.data["x"]
+        self.lc = get_lc_batman(times,T0,P,ii,rprs,aRs,e,omega,u,supersample_factor=7,exp_time=exptime,limbdark="quadratic")
+        return self.lc + gamma
+
+    def compute_polynomial_model(self,pv,times=None):
+        """
+        Compute the polynomial model.  Note that if gammadot and gammadotdot
+        are not specified in the priors file, they both default to zero.
+
+        INPUT:
+            pv    - a list of parameters (only parameters that are being varied)
+            times - times (optional), array of timestamps
+
+        OUTPUT:
+            poly - the polynomial model evaluated at 'times' if supplied,
+                   otherwise defaults to original data timestamps
+        """
+        if times is None:
+            times = self.data["x"]
+
+        #T0 = self.get_jump_parameter_value(pv,'t0_p1')
+        # Use Mean of data instead
+        T0 = (self.data['x'][0] + self.data['x'][-1])/2.
+        try:
+            gammadot = self.get_jump_parameter_value(pv,'gammadot')
+        except KeyError as e:
+            gammadot = 0
+        try:
+            gammadotdot = self.get_jump_parameter_value(pv,'gammadotdot')
+        except KeyError as e:
+            gammadotdot = 0
+
+        self.poly = (
+            gammadot * (times - T0) +
+            gammadotdot * (times - T0)**2
+        )
+        return self.poly
+
+    def detrend(self,pv):
+        """
+        A function to detrend.
+        
+        INPUT:
+        pv    - an array containing a sample draw of the parameters defined in self.lpf.ps
+        
+        OUTPUT:
+        detrend/pv[self.number_pv_baseline] - the additional trend in the data (no including transit)
+        """
+        detrend = np.zeros(len(self.data["flux"]))
+
+        c_airm     =self.get_jump_parameter_value(pv,'c_airm')
+        
+        # loop over detrend parameters
+        #for i in self.ps.get_param_type_indices(paramtype="detrend"):
+        #    #print(i)
+        #    detrend += pv[i]*(self.data[self.ps.labels[i]]-1.)
+        detrend = c_airm*self.data['airmass']
+        return detrend
+
+    def compute_total_model(self,pv,times=None):
+        """
+        Computes the full RM model (including RM and RV and CB)
+
+        INPUT:
+            pv    - a list of parameters (only parameters that are being varied)
+            times - times (optional), array of timestamps
+
+        OUTPUT:
+            rm - the rm model evaluated at 'times' if supplied, otherwise
+                      defaults to original data timestamps
+
+        NOTES:
+            see compute_rm_model(), compute_rv_model(),
+            compute_polynomial_model()
+        """
+        #return self.compute_transit_model(pv,times=times) + self.detrend(pv) + self.compute_polynomial_model(pv,times=times) 
+        #return self.compute_transit_model(pv,times=times) + self.compute_polynomial_model(pv,times=times) + self.compute_flare(pv,times=times)
+        return self.compute_transit_model(pv,times=times) + self.compute_polynomial_model(pv,times=times) 
+
+    def __call__(self,pv):
+        """
+        Return the log likelihood
+
+        INPUT:
+            pv - the input list of varying parameters
+        """
+        if any(pv < self.ps_vary.pmins) or any(pv>self.ps_vary.pmaxs):
+            return -np.inf
+
+        #ii =self.get_jump_parameter_value(pv,'inc_p1')
+        #if ii > 90:
+        #    return -np.inf
+        b =self.get_jump_parameter_value(pv,'b_p1')
+        if b < 0.:
+            return -np.inf
+
+        ###############
+        # Prepare data and model and error for ingestion into likelihood
+        y_data = self.data['y']
+        y_model = self.compute_total_model(pv)
+        # jitter in quadrature
+        jitter = self.get_jump_parameter_value(pv,'sigma_rv')
+        error = np.sqrt(self.data['error']**2.+jitter**2.)
+        ###############
+
+        # Return the log-likelihood
+        log_of_priors = self.ps_vary.c_log_prior(pv)
+        # Calculate log likelihood
+        log_of_model  = ll_normal_ev_py(y_data, y_model, error)
+        log_ln = log_of_priors + log_of_model
+        return log_ln
