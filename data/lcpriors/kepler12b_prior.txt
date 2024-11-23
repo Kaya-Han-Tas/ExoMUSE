@@ -1,15 +1,15 @@
-P_p1			Normal			4.4379637,0.00000025 
+P_p1			Normal			4.4379637,0.0025
 a_p1			Normal		 	8.019,0.044
-t0_p1              	Normal			2455004.00915,0.00002
-ecc_p1			Normal			0.0,0.01
-omega_p1		Normal			0.0,360.
+t0_p1              	Normal			2455004.00915,0.002
+ecc_p1			Uniform			0.0,0.01
+omega_p1		Uniform			0.0,360.
 b_p1			Normal			0.168,0.08
 p_p1			Normal			0.118867,0.000094
 tdur_p1			Normal			4.70104,0.00092
-u1			Normal			0.274,0.03
-u2			Normal			0.367,0.03
+u1			Normal			0.2891,0.03
+u2			Normal			0.3589,0.03
 gamma			FIXED			0.0
-exptime			FIXED			0.02
+exptime			FIXED			0.0021
 sigma_rv		Uniform			0.0,50.
 #
 #q1_TESS		Normal			0.5811066128,0.2221143040
