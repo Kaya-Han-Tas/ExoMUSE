@@ -1,8 +1,8 @@
 P_p1			Normal			282.5254856,0.0001094
 a_p1			Normal		 	176.700,9.5
 t0_p1              	Normal			2455196.071752,0.00026
-ecc_p1			Uniform			0.0,0.5
-omega_p1		Uniform			0.,360.
+ecc_p1			Normal			0.215,0.2
+omega_p1		Normal			24.,10
 b_p1			Normal			0.512,0.066
 p_p1			Normal			0.0920,0.00040
 tdur_p1			Normal			10.810,0.20
