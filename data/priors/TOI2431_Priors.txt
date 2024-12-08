@@ -1,9 +1,9 @@
 mstar			Normal		0.6400000,0.0846982	#From exofop.
-mp			Uniform		0.003,0.300	#Issue
+#mp			Uniform		0.003,0.300	#Issue
 P_p1			Normal		0.2241957810,0.0000000548	#From LC Fit.
 tp_p1			Normal		2460258.8685555365,0.0001573097	#From LC Fit.
 #tp_p1			Normal		2460258.9246044816,0.05620625495	#From LC Fit.
-ecc_p1			Uniform		0.0,0.1	#Issue
+ecc_p1			Uniform		0.0,0.9	#Issue
 omega_p1		Uniform		0.0,360.	#Done
 K_p1			Uniform		40.,150.	#Done (Estimated from RV data)
 gamma			Uniform		12300.,12800.	#Done (Estimated from RV data)
