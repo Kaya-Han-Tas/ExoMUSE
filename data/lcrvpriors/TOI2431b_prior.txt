@@ -1,0 +1,20 @@
+P_p1			Normal			0.2241957810,0.0000000548
+#a_p1			Normal		 	2.1663514481,0.2412670390
+inc_p1			FIXED			90.
+a_p1			Uniform		 	1.2,5.0
+t0_p1              	Normal			2460258.8685555365,0.0001573097
+ecc_p1			FIXED			0.0
+omega_p1		FIXED			90.
+b_p1			Normal			0.4742543318,0.1946947678
+p_p1			Normal			0.0209609696,0.0008676171
+tdur_p1			Normal			0.292,0.026
+u1			Uniform			0.1,1.0
+u2			Uniform			0.1,1.0
+K_p1			Uniform		40.,150.	#Done (Estimated from RV data)
+gamma_rv1			Uniform		12300.,12800.	#Done (Estimated from RV data)
+gamma			Uniform		0.,0.1
+sigma_rv1		Uniform		0.1,100.
+sigma_tr1		Uniform		0.0,0.5        	#Issue
+gammadot		FIXED		0.          #
+gammadotdot		FIXED		0.          #
+exptime			FIXED			0.00138888889
