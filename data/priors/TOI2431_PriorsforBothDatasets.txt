@@ -1,0 +1,17 @@
+#mstar			Normal		0.6400000,0.0846982	#From exofop.
+#mp			Uniform		0.003,0.300	#Issue
+P_p1			Normal		0.2241957810,0.0000000548	#From LC Fit.
+tp_p1			Normal		2460258.8685555365,0.0001573097	#From LC Fit.
+ecc_p1			Uniform		0.0,0.9	#Issue
+omega_p1		Uniform		0.,360.	#Done
+K_p1			Uniform		0.,150.	#Done (Estimated from RV data)
+gamma1			Uniform		-15000.,15000.	#HERMES
+gamma2			Uniform		-15000.,15000.	#NEID
+sigma_rv1		Uniform		0.,1000.       	#HERMES
+sigma_rv2		Uniform		0.,1000.		#NEID
+gammadot		FIXED		0.          #
+gammadotdot		FIXED		0.          #
+#a_p1			Normal		2.1663514481,0.2412670390
+#b_p1			Normal		0.4742543318,0.1946947678
+#p_p1			Normal		0.0209609696,0.0008676171
+#rho			Normal		3826.3465481647,1141.3342539296

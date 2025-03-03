@@ -22,7 +22,8 @@ import corner
 from scipy.stats import binned_statistic
 from pytransit.utils import de
 
-GAIA_TP_OFFSET = 2457389.0
+# GAIA_TP_OFFSET = 2457389.0
+GAIA_TP_OFFSET = 0.0
 
 def distance_in_pc_from_parallax(plx):
     """
@@ -4326,7 +4327,7 @@ class GaiaFitRVLC(object):
         print(self.df_diagnostics.to_string())
         return self.df_diagnostics
 
-##### Another Try, RMFit might be enough for the fitting.
+##### Only defining the Likelihood function since RMFit is already works for the fitting process.
 class LPFunction1RV1Phot(object):
     """
     Log-Likelihood function class

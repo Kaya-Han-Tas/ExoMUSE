@@ -1,0 +1,15 @@
+per_p1			normal		0.2241957810,0.0000000535
+t0_p1			normal		2460258.8685555365,0.0001474279
+b_p1			uniform		0.0,1.0
+p_p1			uniform		0.0,1.0
+rho_star		loguniform	100.0,10000.0
+e_p1			FIXED		0.0
+omega_p1		FIXED		90.0
+K_p1			uniform		0.0,1000.0
+q1_TESS			uniform		0.0,1.0
+q2_TESS			uniform		0.0,1.0
+sigma_TESS		loguniform	1e-06,50.0
+gamma_NEID		uniform		-50.0,50.0
+sigma_NEID		loguniform	1e-3,100.0
+gammadot 			FIXED		0.0
+gammadotdot			FIXED		0.0
