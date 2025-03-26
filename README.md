@@ -1,2 +1,2 @@
-# ExoSoft
-Master's Project - Exoplanet Software
+# ExoMuse
+Master's Project - Exoplanet Modelling and Understanding for Science and Education
