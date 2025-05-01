@@ -1,0 +1,14 @@
+P_p1	normal	0.224195,0.0000004
+t0_p1	normal	2460258.868869,0.0004664
+b_p1	uniform	0.0,1.0
+p_p1	uniform	0.0,1.0
+ecc_p1	fixed	0.0
+omega_p1	fixed	90.0
+rho	normal	3680,260
+K_p1		uniform		0.0,1000.0
+mu_NEID1	uniform		-50.0,50.0
+mu_NEID2	uniform         -50.0,50.0
+mu_NEID3	uniform         -50.0,50.0
+sigma_w_NEID1   loguniform  0.001,100.0         
+sigma_w_NEID2   loguniform  0.001,100.0         
+sigma_w_NEID3   loguniform  0.001,100.0 
