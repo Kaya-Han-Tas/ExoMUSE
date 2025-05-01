@@ -1,0 +1,14 @@
+mstar                 Normal            0.962,0.040  # confirmed
+mp                    Uniform           1.0,60       # mjup
+ecc_p1                Uniform           0.0,0.9     # done
+omega_p1              Uniform           0.0,360     # done
+cosi                  Uniform           -1.0,1.0     # done
+Omega                 Uniform           0.0,360.    # done
+P_p1                  Uniform           500,1500   # done
+tp_p1                 Uniform           -500,500    # this is a bit tight, should be -500,500 ideally in this case
+plx                   Normal            29.01,0.024 # confirmed
+eps                   FIXED             0.          # confirmed
+gamma                 Uniform           -400.,400.  #
+sigma_rv              FIXED             0.          #
+gammadot              FIXED             0.          #
+gammadotdot           FIXED             0.          #
