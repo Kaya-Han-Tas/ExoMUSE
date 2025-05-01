@@ -164,3 +164,4 @@ cython_debug/
 # Ignore directories
 notebooks/toi2431-analysis/1200 Planet Injection Run Results
 notebooks/toi2431-analysis/300 Planet Injection Run Results
+notebooks/toi2431-analysis/Fits files of NEID Observations
