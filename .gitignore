@@ -162,5 +162,5 @@ cython_debug/
 #.idea/
 
 # Ignore directories
-notebooks\toi2431-analysis\1200 Planet Injection Run Results
-notebooks\toi2431-analysis\300 Planet Injection Run Results
+notebooks/toi2431-analysis/1200 Planet Injection Run Results
+notebooks/toi2431-analysis/300 Planet Injection Run Results
