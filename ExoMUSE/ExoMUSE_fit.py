@@ -905,7 +905,7 @@ class LPFunctionRVGaia_withInflationFactor(object):
         return log_ln
 
 
-class GaiaFitRVGaia(object):
+class ExoMUSEfitRVGaia(object):
     """
     A class that does Gaia+RV fitting.
 
@@ -1143,7 +1143,7 @@ class LPFunctionGaiaOnly(object):
         #log_ln = log_prob_gaia
         return log_ln
 
-class GaiaFitGaiaOnly(object):
+class ExoMUSEfitGaiaOnly(object):
     """
     A class that does Gaia fitting.
 
@@ -2105,7 +2105,7 @@ class LPFunctionRVOnly_2Instruments(object):
         log_ln = log_of_priors + log_of_rv_model_inst1 + log_of_rv_model_inst2
         return log_ln
 
-class GaiaFitRVOnly(object):
+class ExoMUSEfitRVOnly(object):
     """
     A class that does Gaia fitting.
 
@@ -4222,7 +4222,7 @@ class LPFunctionRVLC(object):
         log_ln = log_of_priors + log_of_rv_model + log_of_lc_model
         return log_ln
 
-class GaiaFitRVLC(object):
+class ExoMUSEfitRVLC(object):
     """
     A class that does RV+LC fitting.
 
