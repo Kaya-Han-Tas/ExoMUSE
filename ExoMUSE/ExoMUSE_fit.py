@@ -13,7 +13,7 @@ import radvel
 from priors import PriorSet, UP, NP, JP, FP
 from likelihood import ll_normal_ev_py
 import stats_help
-import utils
+import ExoMUSE_utils
 import mcmc_help
 from nsstools import NssSource
 import pyde
@@ -36,7 +36,7 @@ def plot_cov(C,labels,cmap='viridis'):
     ax.imshow(C,cmap=cmap)
     ax.set_xticklabels(['']+labels)
     ax.set_yticklabels(['']+labels)
-    cx, cb = utils.ax_add_colorbar(ax,p=C,cmap=cmap)
+    cx, cb = ExoMUSE_utils.ax_add_colorbar(ax,p=C,cmap=cmap)
     cx.set_ylabel('Value')
 
 def semi_amplitude_from_gaia(P,a0,plx,cosi,e):
@@ -984,7 +984,7 @@ class GaiaFitRVGaia(object):
         df_post['G']     = thiele_innes_g_from_campell(df_post['a0'].values, df_post['omega_p1'].values, df_post['Omega'].values, df_post['cosi'].values)
 
         self.df_post = df_post
-        self.df_mean = pd.concat([utils.get_mean_values_for_posterior(df_post[lab].values,lab) for lab in df_post.columns])
+        self.df_mean = pd.concat([ExoMUSE_utils.get_mean_values_for_posterior(df_post[lab].values,lab) for lab in df_post.columns])
 
         return self.df_post, self.df_mean
 
@@ -993,7 +993,7 @@ class GaiaFitRVGaia(object):
 
         labels_gaia = ['A','B','F','G','ecc_p1','P_p1','tp_p1']
         df_post_gaia = self.df_post[labels_gaia]
-        self.df_gaia_mean = pd.concat([utils.get_mean_values_for_posterior(df_post_gaia[lab].values,lab) for lab in df_post_gaia.columns])
+        self.df_gaia_mean = pd.concat([ExoMUSE_utils.get_mean_values_for_posterior(df_post_gaia[lab].values,lab) for lab in df_post_gaia.columns])
 
         self.df_gaia_mean['error'] = (self.df_gaia_mean['minus'] + self.df_gaia_mean['plus'])/2.
         self.df_gaia_mean['zscore'] = (self.df_gaia_mean['medvals'].values - self.lpf.df_known['median'].values)/self.lpf.df_known.error.values
@@ -1023,7 +1023,7 @@ class GaiaFitRVGaia(object):
             bx.axhline(y=1,color='red',ls='--',lw=0.5)
 
             for xx in [ax,bx]:
-                utils.ax_apply_settings(xx)
+                ExoMUSE_utils.ax_apply_settings(xx)
                 
             fig.subplots_adjust(wspace=0.3)
 
@@ -1039,7 +1039,7 @@ class GaiaFitRVGaia(object):
         if flatchain is None:
             flatchain = self.sampler.flatchain
             print('No flatchain passed, defaulting to using full chains')
-        df_list = [utils.get_mean_values_for_posterior(flatchain[:,i],label,description) for i,label,description in zip(range(len(self.lpf.ps_vary.descriptions)),self.lpf.ps_vary.labels,self.lpf.ps_vary.descriptions)]
+        df_list = [ExoMUSE_utils.get_mean_values_for_posterior(flatchain[:,i],label,description) for i,label,description in zip(range(len(self.lpf.ps_vary.descriptions)),self.lpf.ps_vary.labels,self.lpf.ps_vary.descriptions)]
         return pd.concat(df_list)
     
     def print_param_diagnostics(self,pv):
@@ -1268,7 +1268,7 @@ class GaiaFitGaiaOnly(object):
         bx.axhline(y=1,color='red',ls='--',lw=0.5)
 
         for xx in [ax,bx]:
-            utils.ax_apply_settings(xx)
+            ExoMUSE_utils.ax_apply_settings(xx)
             
         fig.subplots_adjust(wspace=0.3)
 
@@ -1284,7 +1284,7 @@ class GaiaFitGaiaOnly(object):
         if flatchain is None:
             flatchain = self.sampler.flatchain
             print('No flatchain passed, defaulting to using full chains')
-        df_list = [utils.get_mean_values_for_posterior(flatchain[:,i],label,description) for i,label,description in zip(range(len(self.lpf.ps_vary.descriptions)),self.lpf.ps_vary.labels,self.lpf.ps_vary.descriptions)]
+        df_list = [ExoMUSE_utils.get_mean_values_for_posterior(flatchain[:,i],label,description) for i,label,description in zip(range(len(self.lpf.ps_vary.descriptions)),self.lpf.ps_vary.labels,self.lpf.ps_vary.descriptions)]
         return pd.concat(df_list)
     
     def print_param_diagnostics(self,pv):
@@ -2205,7 +2205,7 @@ class GaiaFitRVOnly(object):
         if flatchain is None:
             flatchain = self.sampler.flatchain
             print('No flatchain passed, defaulting to using full chains')
-        df_list = [utils.get_mean_values_for_posterior(flatchain[:,i],label,description) for i,label,description in zip(range(len(self.lpf.ps_vary.descriptions)),self.lpf.ps_vary.labels,self.lpf.ps_vary.descriptions)]
+        df_list = [ExoMUSE_utils.get_mean_values_for_posterior(flatchain[:,i],label,description) for i,label,description in zip(range(len(self.lpf.ps_vary.descriptions)),self.lpf.ps_vary.labels,self.lpf.ps_vary.descriptions)]
         return pd.concat(df_list)
 
     def print_param_diagnostics(self,pv):
@@ -3033,7 +3033,7 @@ class RMFit(object):
         if flatchain is None:
             flatchain = self.sampler.flatchain
             print('No flatchain passed, defaulting to using full chains')
-        df_list = [utils.get_mean_values_for_posterior(flatchain[:,i],label,description) for i,label,description in zip(range(len(self.lpf.ps_vary.descriptions)),self.lpf.ps_vary.labels,self.lpf.ps_vary.descriptions)]
+        df_list = [ExoMUSE_utils.get_mean_values_for_posterior(flatchain[:,i],label,description) for i,label,description in zip(range(len(self.lpf.ps_vary.descriptions)),self.lpf.ps_vary.labels,self.lpf.ps_vary.descriptions)]
         return pd.concat(df_list)
 
     def print_param_diagnostics(self,pv):
@@ -3627,7 +3627,7 @@ class TransitFit(object):
         if flatchain is None:
             flatchain = self.sampler.flatchain
             print('No flatchain passed, defaulting to using full chains')
-        df_list = [utils.get_mean_values_for_posterior(flatchain[:,i],label,description) for i,label,description in zip(range(len(self.lpf.ps_vary.descriptions)),self.lpf.ps_vary.labels,self.lpf.ps_vary.descriptions)]
+        df_list = [ExoMUSE_utils.get_mean_values_for_posterior(flatchain[:,i],label,description) for i,label,description in zip(range(len(self.lpf.ps_vary.descriptions)),self.lpf.ps_vary.labels,self.lpf.ps_vary.descriptions)]
         return pd.concat(df_list)
 
     def print_param_diagnostics(self,pv):
@@ -4301,7 +4301,7 @@ class GaiaFitRVLC(object):
         # df_post['G']     = thiele_innes_g_from_campell(df_post['a0'].values, df_post['omega_p1'].values, df_post['Omega'].values, df_post['cosi'].values)
 
         self.df_post = df_post
-        self.df_mean = pd.concat([utils.get_mean_values_for_posterior(df_post[lab].values,lab) for lab in df_post.columns])
+        self.df_mean = pd.concat([ExoMUSE_utils.get_mean_values_for_posterior(df_post[lab].values,lab) for lab in df_post.columns])
 
         return self.df_post, self.df_mean
     
@@ -4316,7 +4316,7 @@ class GaiaFitRVLC(object):
         if flatchain is None:
             flatchain = self.sampler.flatchain
             print('No flatchain passed, defaulting to using full chains')
-        df_list = [utils.get_mean_values_for_posterior(flatchain[:,i],label,description) for i,label,description in zip(range(len(self.lpf.ps_vary.descriptions)),self.lpf.ps_vary.labels,self.lpf.ps_vary.descriptions)]
+        df_list = [ExoMUSE_utils.get_mean_values_for_posterior(flatchain[:,i],label,description) for i,label,description in zip(range(len(self.lpf.ps_vary.descriptions)),self.lpf.ps_vary.labels,self.lpf.ps_vary.descriptions)]
         return pd.concat(df_list)
     
     def print_param_diagnostics(self,pv):

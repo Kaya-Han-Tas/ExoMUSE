@@ -5,7 +5,7 @@ import numpy as np
 from nsstools import NssSource
 import corner
 import emcee
-import utils
+import ExoMUSE_utils
 #import astropylib.webscrape
 #import astropylib.rvprec
 from datetime import datetime
@@ -162,10 +162,10 @@ class GaiaSource(object):
         Get semi-amplitudes and errors
         """
         #P = np.random.normal(self.period,self.period_error,N)
-        P = utils.truncated_normal_samples(self.period,self.period_error,0,self.period*10,N)
+        P = ExoMUSE_utils.truncated_normal_samples(self.period,self.period_error,0,self.period*10,N)
         plx = np.random.normal(self.parallax,self.parallax_error,N)
         a0 = np.random.normal(self.a0,self.a0_error,N)
-        e = utils.truncated_normal_samples(self.eccentricity,self.eccentricity_error,0,1,N)
+        e = ExoMUSE_utils.truncated_normal_samples(self.eccentricity,self.eccentricity_error,0,1,N)
         i = np.random.normal(self.inclination,self.inclination_error,N)
         cosi = np.cos(np.deg2rad(i))
         K = ExoMUSE_fit.semi_amplitude_from_gaia(P,a0,plx,cosi,e)
@@ -173,7 +173,7 @@ class GaiaSource(object):
 
         if self.st_mass is not None:
             self.st_mass_samples = np.random.normal(self.st_mass,self.st_masserr,N)
-            self.pl_mass_samples = utils.msini_from_rvs(self.Ksamples,self.st_mass_samples,P,e,i)#/317.81 # to jupiter masses
+            self.pl_mass_samples = ExoMUSE_utils.msini_from_rvs(self.Ksamples,self.st_mass_samples,P,e,i)#/317.81 # to jupiter masses
             self.pl_mass = np.percentile(self.pl_mass_samples,50)
             self.pl_mass_low = self.pl_mass - np.percentile(self.pl_mass_samples,16)
             self.pl_mass_up = np.percentile(self.pl_mass_samples,84) - self.pl_mass
@@ -249,7 +249,7 @@ class GaiaSource(object):
         bx.axhline(y=1,color='red',ls='--',lw=0.5)
 
         for xx in [ax,bx]:
-            utils.ax_apply_settings(xx)
+            ExoMUSE_utils.ax_apply_settings(xx)
             
         fig.subplots_adjust(wspace=0.3)
     
@@ -264,7 +264,7 @@ class GaiaSource(object):
         if flatchain is None:
             flatchain = self.sampler.flatchain
             print('No flatchain passed, defaulting to using full chains')
-        df_list = [utils.get_mean_values_for_posterior(flatchain[:,i],label) for i,label in zip(range(len(self.labels)),self.labels)]
+        df_list = [ExoMUSE_utils.get_mean_values_for_posterior(flatchain[:,i],label) for i,label in zip(range(len(self.labels)),self.labels)]
         df_list = pd.concat(df_list).reset_index(drop=True)
         df_list = df_list[['Labels','medvals','minus','plus','values']]
         return df_list
@@ -275,13 +275,13 @@ class GaiaSource(object):
         Plot expected RV orbit
         """
 
-        t = utils.iso2jd([tstart,tstop])
+        t = ExoMUSE_utils.iso2jd([tstart,tstop])
         t = np.linspace(t[0],t[1],Nt)
 
         if ax is None:
             fig, ax = plt.subplots(dpi=200)
         if bjd is not None:
-            ax.errorbar(utils.jd2datetime(bjd),rv+rv_offset,e_rv,marker='o',lw=0,mew=0.5,capsize=4,color='black',elinewidth=0.5)
+            ax.errorbar(ExoMUSE_utils.jd2datetime(bjd),rv+rv_offset,e_rv,marker='o',lw=0,mew=0.5,capsize=4,color='black',elinewidth=0.5)
         rv_50 = ExoMUSE_fit.get_rv_curve_peri(t,
                                           self.period,
                                           self.t_periastron+ExoMUSE_fit.GAIA_TP_OFFSET,
@@ -302,8 +302,8 @@ class GaiaSource(object):
         rv_16 = np.percentile(rvs,16,axis=0)
         #rv_50 = np.percentile(rvs,84,axis=0)
         rv_84 = np.percentile(rvs,84,axis=0)
-        ax.plot(utils.jd2datetime(t),rv_50,color='crimson',label='50% model')
-        ax.fill_between(utils.jd2datetime(t),rv_16,rv_84,color='crimson',lw=0,alpha=0.1,label='$1\sigma$')
+        ax.plot(ExoMUSE_utils.jd2datetime(t),rv_50,color='crimson',label='50% model')
+        ax.fill_between(ExoMUSE_utils.jd2datetime(t),rv_16,rv_84,color='crimson',lw=0,alpha=0.1,label='$1\sigma$')
         ax.set_xlabel('Date [UT]',fontsize=14)
         ax.set_ylabel('RV [m/s]',fontsize=14)
         lab = 'Target={} ($M={:0.2f}\pm{:0.2f}M_\odot$)\n'.format(title,self.st_mass,self.st_masserr)
@@ -479,7 +479,7 @@ class GaiaSource2(object):
         bx.axhline(y=1,color='red',ls='--',lw=0.5)
 
         for xx in [ax,bx]:
-            utils.ax_apply_settings(xx)
+            ExoMUSE_utils.ax_apply_settings(xx)
             
         fig.subplots_adjust(wspace=0.3)
     
@@ -494,7 +494,7 @@ class GaiaSource2(object):
         if flatchain is None:
             flatchain = self.sampler.flatchain
             print('No flatchain passed, defaulting to using full chains')
-        df_list = [utils.get_mean_values_for_posterior(flatchain[:,i],label) for i,label in zip(range(len(self.labels)),self.labels)]
+        df_list = [ExoMUSE_utils.get_mean_values_for_posterior(flatchain[:,i],label) for i,label in zip(range(len(self.labels)),self.labels)]
         df_list = pd.concat(df_list).reset_index(drop=True)
         df_list = df_list[['Labels','medvals','minus','plus','values']]
         return df_list
