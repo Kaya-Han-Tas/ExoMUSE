@@ -24,6 +24,19 @@ CP = [(0.2980392156862745, 0.4470588235294118, 0.6901960784313725),
  (0.8, 0.7254901960784313, 0.4549019607843137),
  (0.39215686274509803, 0.7098039215686275, 0.803921568627451)]
 
+def get_vals(vec, print_result = False, param_name = None):
+    fvec   = np.sort(vec)
+
+    fval  = np.median(fvec)
+    nn = int(np.around(len(fvec)*0.15865))
+
+    vali,valf = fval - fvec[nn],fvec[-nn] - fval
+    
+    if print_result == True:
+        print(f"{param_name}: {fval:.6f} +{valf:.6f} -{vali:.6f}")
+    
+    return fval,vali,valf
+
 def pickle_dump(filename,obj):
     savefile = open(filename,"w")
     pickle.dump(obj, savefile)
