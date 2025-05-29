@@ -25,7 +25,7 @@ CP = [(0.2980392156862745, 0.4470588235294118, 0.6901960784313725),
  (0.39215686274509803, 0.7098039215686275, 0.803921568627451)]
 
 #We then define a function to convert observation times to the Orbital Phase.
-def time_to_phase(times, P, T_0):
+def time_to_phase(times, P, T_0, phase_method="normal"):
     """Takes the Observation Times, Period and the T0. Returns the orbital 
     phases for given Observation Times.
     
@@ -34,15 +34,29 @@ def time_to_phase(times, P, T_0):
     times: Array of observation times (Julian Dates)
     P: Orbital period in days
     T_0: Reference time (epoch or time of periastron) in Julian Date
+    phase_method: Selecting how to calculate the phases: 
+        "normal" => Phase in range [0,1]: ((times - T_0) % P) / P
+        "centered" => Centered phase in range [-0.5, 0.5]: ((times - T_0) / P) % 1
     
     Output:
     ----------------------------------------------------------------------------
     ((times - T_0) % P) / P: Orbital Phases
     
     """
-    
+
     #Normalize time to phase in the range [0, 1]
-    return ((times - T_0) % P) / P
+    if phase_method == "normal":
+        phase = ((times - T_0) % P) / P
+        return phase
+    
+    #Normalize time to centered phase in the range [-0.5, 0.5]
+    elif phase_method == "centered":
+        phase = ((times - T_0) / P) % 1
+        phase[phase > 0.5] -= 1
+        return phase
+    
+    else:
+        raise ValueError("Invalid phase method. Use 1 for [0,1] or 2 for [-0.5,0.5] range.")
 
 def get_vals(vec, print_result = False, param_name = None):
     fvec   = np.sort(vec)

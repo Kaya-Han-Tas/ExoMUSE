@@ -1,0 +1,12 @@
+P_p1			Normal			0.224195,4e-07
+t0_p1           Normal			2460258.868869,0.0004664
+ecc_p1			FIXED			0.0
+omega_p1		FIXED			90.
+b_p1			Uniform			0.0,1.0
+p_p1			Uniform			0.0,1.0
+tdur_p1			Normal			0.292,0.026
+u1			    Uniform			0.1,1.0
+u2			    Uniform			0.1,1.0
+gamma			FIXED			0.0
+exptime			FIXED			0.00138888889
+sigma_tr		Uniform			0.0,0.1
