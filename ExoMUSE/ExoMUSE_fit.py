@@ -3917,5 +3917,366 @@ class ExoMUSEfitRVTransit(object):
 
 ###########################################################################################################################################################################################
 ###########################################################################################################################################################################################
+
+###########################################################################################################################################################################################
+# RV-TRANSIT JOINT FIT FOR 3 RV INSTRUMENTS: LOG-LIKELIHOOD FUNCTION + FITTING FUNCTION (FCO for TOI-2431 b)
+###########################################################################################################################################################################################
+
+class LPFunctionRVTransit3Instruments(object):
+    """
+    Unified Log-Likelihood function class for joint RV and photometric modeling.
+    """
+    def __init__(self, inp, file_priors):
+        """
+        INPUT:
+            inp - dictionary containing RV and photometric data
+            file_priors - prior file name
+        """
+        self.data_rv1 = {"time": inp['time_rv1'], "y": inp['rv1'], "error": inp['e_rv1']}
+        self.data_rv2 = {"time": inp['time_rv2'], "y": inp['rv2'], "error": inp['e_rv2']}
+        self.data_rv3 = {"time": inp['time_rv3'], "y": inp['rv3'], "error": inp['e_rv3']}
+        self.data_phot = {"time": inp['time_phot'], "y": inp['flux'], "error": inp['e_flux']}
+        
+        # Setting priors
+        self.ps_all = priorset_from_file(file_priors)  # all priors
+        self.ps_fixed = PriorSet(np.array(self.ps_all.priors)[np.array(self.ps_all.fixed)])  # fixed priors
+        self.ps_vary = PriorSet(np.array(self.ps_all.priors)[~np.array(self.ps_all.fixed)])  # varying priors
+        self.ps_fixed_dict = {key: val for key, val in zip(self.ps_fixed.labels, self.ps_fixed.args1)}
+        print('Reading in priorfile from {}'.format(file_priors))
+        print(self.ps_all.df)
+
+    def get_jump_parameter_index(self, lab):
+        return np.where(np.array(self.ps_vary.labels) == lab)[0][0]
+
+    def get_jump_parameter_value(self, pv, lab):
+        if lab in self.ps_vary.labels:
+            return pv[self.get_jump_parameter_index(lab)]
+        else:
+            return self.ps_fixed_dict[lab]
+
+    def compute_rv_model(self,pv,times1=None,times2=None, times3=None):
+        """
+        Compute the RV model
+
+        INPUT:
+            pv    - a list of parameters (only parameters that are being varied)
+            times - times (optional), array of timestamps
+
+        OUTPUT:
+            rv - the rv model evaluated at 'times' if supplied, otherwise
+                      defaults to original data timestamps
+        """
+        if times1 is None:
+            times1 = self.data_rv1["time"]
+        if times2 is None:
+            times2 = self.data_rv2["time"]
+        if times3 is None:
+            times3 = self.data_rv3["time"]
+        
+        Tp      = self.get_jump_parameter_value(pv,'t0_p1')
+        P       = self.get_jump_parameter_value(pv,'P_p1')
+        gamma1 = self.get_jump_parameter_value(pv, 'gamma_rv1')
+        gamma2 = self.get_jump_parameter_value(pv, 'gamma_rv2')
+        gamma3 = self.get_jump_parameter_value(pv, 'gamma_rv3')
+        K       = self.get_jump_parameter_value(pv,'K_p1')
+        e       = self.get_jump_parameter_value(pv,'ecc_p1')
+        w       = self.get_jump_parameter_value(pv,'omega_p1')
+        self.rv1= get_rv_curve_peri(times1,P=P,tp=Tp,e=e,omega=w,K=K)+gamma1
+        self.rv2= get_rv_curve_peri(times2,P=P,tp=Tp,e=e,omega=w,K=K)+gamma2
+        self.rv3= get_rv_curve_peri(times3,P=P,tp=Tp,e=e,omega=w,K=K)+gamma3
+        return self.rv1, self.rv2, self.rv3
+
+    def compute_transit_model(self, pv, times=None):
+        if times is None:
+            times = self.data_phot["time"]
+        T0 = self.get_jump_parameter_value(pv, 't0_p1')
+        P = self.get_jump_parameter_value(pv, 'P_p1')
+        ii = self.get_jump_parameter_value(pv, 'inc_p1')
+        rprs = self.get_jump_parameter_value(pv, 'p_p1')
+        aRs = self.get_jump_parameter_value(pv, 'a_p1')
+        e = self.get_jump_parameter_value(pv, 'ecc_p1')
+        omega = self.get_jump_parameter_value(pv, 'omega_p1')
+        u1 = self.get_jump_parameter_value(pv, 'u1')
+        u2 = self.get_jump_parameter_value(pv, 'u2')
+        u = [u1, u2]
+        exptime = self.get_jump_parameter_value(pv, 'exptime') / 86400.  # exptime in days
+        self.lc = get_lc_batman(times, T0, P, ii, rprs, aRs, e, omega, u, supersample_factor=7, exp_time=exptime, limbdark="quadratic")
+        return self.lc
+
+    def __call__(self, pv):
+        if any(pv < self.ps_vary.pmins) or any(pv > self.ps_vary.pmaxs):
+            return -np.inf
+
+        # RV Model
+        y_data1 = self.data_rv1['y']
+        y_data2 = self.data_rv2['y']
+        y_data3 = self.data_rv3["y"]
+        y_model1, y_model2, y_model3 = self.compute_rv_model(pv,times1=None,times2=None,times3=None)
+        rv_model = self.compute_rv_model(pv)
+        jitter_rv1 = self.get_jump_parameter_value(pv, 'sigma_rv1')
+        jitter_rv2 = self.get_jump_parameter_value(pv, 'sigma_rv2')
+        jitter_rv3 = self.get_jump_parameter_value(pv, 'sigma_rv3')
+        error_rv1 = np.sqrt(self.data_rv1['error']**2. + jitter_rv1**2.)
+        error_rv2 = np.sqrt(self.data_rv2['error']**2. + jitter_rv2**2.)
+        error_rv3 = np.sqrt(self.data_rv3['error']**2. + jitter_rv3**2.)
+        log_of_rv_model_rv1  = ll_normal_ev_py(y_data1, y_model1, error_rv1)
+        log_of_rv_model_rv2  = ll_normal_ev_py(y_data2, y_model2, error_rv2)
+        log_of_rv_model_rv3  = ll_normal_ev_py(y_data3, y_model3, error_rv3)
+        log_of_rv_model = log_of_rv_model_rv1 + log_of_rv_model_rv2 + log_of_rv_model_rv3
+
+        # Transit Model
+        phot_model = self.compute_transit_model(pv)
+        jitter_phot = self.get_jump_parameter_value(pv, 'sigma_tr1')
+        error_phot = np.sqrt(self.data_phot['error']**2. + jitter_phot**2.)
+        log_of_phot_model = ll_normal_ev_py(self.data_phot["y"], phot_model, error_phot)
+
+        # Priors
+        log_of_priors = self.ps_vary.c_log_prior(pv)
+
+        # Combined Log-Likelihood
+        log_ln = log_of_priors + log_of_rv_model + log_of_phot_model
+        return log_ln
+
+class ExoMUSEfitRVTransit3Instruments(object):
+    """
+    A class that does RV+LC fitting.
+
+    NOTES:
+        - Needs to have LPFunction defined
+    """
+    def __init__(self, LPFunction):
+        """
+        Initialize the fitting class.
+
+        INPUT:
+            LPFunction - An instance of the likelihood function class (LPFunctionRMTransit).
+        """
+        self.lpf = LPFunction
+
+    def minimize_AMOEBA(self):
+        """
+        Minimize the likelihood using the Nelder-Mead (AMOEBA) algorithm.
+        """
+        centers = np.array(self.lpf.ps_vary.centers)
+
+        def neg_lpf(pv):
+            return -1. * self.lpf(pv)
+
+        self.min_pv = minimize(
+            neg_lpf,
+            centers,
+            method='Nelder-Mead',
+            tol=1e-9,
+            options={'maxiter': 100000, 'maxfev': 10000, 'disp': True}
+        ).x
+
+    def minimize_PyDE(self, npop=100, de_iter=200, mc_iter=1000, mcmc=True, threads=8, maximize=True):
+        """
+        Minimize using the PyDE
+
+        NOTES:
+            see https://github.com/hpparvi/PyDE
+        """
+
+        centers = np.array(self.lpf.ps_vary.centers)
+        print("Running PyDE Optimizer")
+        self.de = pyde.de.DiffEvol(self.lpf, self.lpf.ps_vary.bounds, npop, maximize=maximize)
+        self.min_pv, self.min_pv_lnval = self.de.optimize(ngen=de_iter)
+        print("Optimized using PyDE")
+        print("Final parameters:")
+        self.print_param_diagnostics(self.min_pv)
+        print("LogPost value:", -1 * self.min_pv_lnval)
+        self.lnl_max = -1 * self.min_pv_lnval - self.lpf.ps_vary.c_log_prior(self.min_pv)
+        print("LnL value:", self.lnl_max)
+        print("Log priors:", self.lpf.ps_vary.c_log_prior(self.min_pv))
+
+        if mcmc:
+            print("Running MCMC")
+            self.sampler = emcee.EnsembleSampler(npop, self.lpf.ps_vary.ndim, self.lpf, threads=threads)
+            print("MCMC iterations =", mc_iter)
+            for i, c in enumerate(self.sampler.sample(self.de.population, iterations=mc_iter)):
+                print(i, end=" ")
+            print("Finished MCMC")
+            self.min_pv_mcmc = self.get_mean_values_mcmc_posteriors().medvals.values
+
+    def get_mean_values_mcmc_posteriors(self, flatchain=None):
+        """
+        Get the mean values from the posteriors
+
+            flatchain - if not passed, then will default using the full flatchain (will likely include burnin)
+
+        EXAMPLE:
+        """
+        if flatchain is None:
+            flatchain = self.sampler.flatchain
+            print('No flatchain passed, defaulting to using full chains')
+        df_list = [
+            ExoMUSE_utils.get_mean_values_for_posterior(flatchain[:, i], label, description)
+            for i, label, description in zip(range(len(self.lpf.ps_vary.descriptions)), self.lpf.ps_vary.labels, self.lpf.ps_vary.descriptions)
+        ]
+        return pd.concat(df_list)
+
+    def print_param_diagnostics(self, pv):
+        """
+        Print diagnostics for the fitted parameters.
+
+        INPUT:
+            pv - Array of parameter values.
+        """
+        self.df_diagnostics = pd.DataFrame(
+            zip(
+                self.lpf.ps_vary.labels,
+                self.lpf.ps_vary.centers,
+                self.lpf.ps_vary.bounds[:, 0],
+                self.lpf.ps_vary.bounds[:, 1],
+                pv,
+                self.lpf.ps_vary.centers - pv
+            ),
+            columns=["labels", "centers", "lower", "upper", "pv", "center_dist"]
+        )
+        print(self.df_diagnostics.to_string())
+        return self.df_diagnostics
+
+    def plot_fit(self, pv=None, times_rv=None, times_transit=None):
+        """
+        Plot the RV and transit model fits.
+
+        INPUT:
+            pv - Array of parameter values. Defaults to best-fit parameters.
+            times_rv - Optional, RV timestamps for plotting.
+            times_transit - Optional, transit timestamps for plotting.
+        """
+        if pv is None:
+            print('Plotting curve with best-fit values')
+            pv = self.min_pv
+
+        # RV Data
+        x_rv1 = self.lpf.data_rv1['time']
+        y_rv1 = self.lpf.data_rv1['y']
+        jitter_rv1 = self.lpf.get_jump_parameter_value(pv, 'sigma_rv1')
+        yerr_rv1 = np.sqrt(self.lpf.data_rv1['error']**2. + jitter_rv1**2.)
+        model_rv = self.lpf.compute_rv_model(pv, times=times_rv)
+
+        # Transit Data
+        x_transit = self.lpf.data_tr1['time']
+        y_transit = self.lpf.data_tr1['y']
+        jitter_transit = self.lpf.get_jump_parameter_value(pv, 'sigma_tr1')
+        yerr_transit = np.sqrt(self.lpf.data_tr1['error']**2. + jitter_transit**2.)
+        model_transit = self.lpf.compute_transit_model(pv, times=times_transit)
+
+        # Plot
+        fig, (ax_rv, ax_transit) = plt.subplots(nrows=2, sharex=True, figsize=(10, 6))
+        ax_rv.errorbar(x_rv, y_rv, yerr=yerr_rv, marker="o", lw=0, elinewidth=1, capsize=5, label="RV Data")
+        ax_rv.plot(times_rv if times_rv is not None else x_rv, model_rv, label="RV Model", color='crimson')
+        ax_transit.errorbar(x_transit, y_transit, yerr=yerr_transit, marker="o", lw=0, elinewidth=1, capsize=5, label="Transit Data")
+        ax_transit.plot(times_transit if times_transit is not None else x_transit, model_transit, label="Transit Model", color='crimson')
+
+        for ax in [ax_rv, ax_transit]:
+            ax.legend(loc='lower left', fontsize=9)
+            ax.minorticks_on()
+        ax_rv.set_ylabel("RV [m/s]")
+        ax_transit.set_ylabel("Flux")
+        ax_transit.set_xlabel("Time (BJD)")
+        fig.subplots_adjust(hspace=0.05)
+
+class LPFunctionRVTransit3Instrumentsold(object):
+    """
+    Unified Log-Likelihood function class for joint RV and photometric modeling.
+    """
+    def __init__(self, inp, file_priors):
+        """
+        INPUT:
+            inp - dictionary containing RV and photometric data
+            file_priors - prior file name
+        """
+        self.data_rv1 = {"time": inp['time_rv1'], "y": inp['rv1'], "error": inp['e_rv1']}
+        self.data_rv2 = {"time": inp['time_rv2'], "y": inp['rv2'], "error": inp['e_rv2']}
+        self.data_rv3 = {"time": inp['time_rv3'], "y": inp['rv3'], "error": inp['e_rv3']}
+        self.data_phot = {"time": inp['time_phot'], "y": inp['flux'], "error": inp['e_flux']}
+        
+        # Setting priors
+        self.ps_all = priorset_from_file(file_priors)  # all priors
+        self.ps_fixed = PriorSet(np.array(self.ps_all.priors)[np.array(self.ps_all.fixed)])  # fixed priors
+        self.ps_vary = PriorSet(np.array(self.ps_all.priors)[~np.array(self.ps_all.fixed)])  # varying priors
+        self.ps_fixed_dict = {key: val for key, val in zip(self.ps_fixed.labels, self.ps_fixed.args1)}
+        print('Reading in priorfile from {}'.format(file_priors))
+        print(self.ps_all.df)
+
+    def get_jump_parameter_index(self, lab):
+        return np.where(np.array(self.ps_vary.labels) == lab)[0][0]
+
+    def get_jump_parameter_value(self, pv, lab):
+        if lab in self.ps_vary.labels:
+            return pv[self.get_jump_parameter_index(lab)]
+        else:
+            return self.ps_fixed_dict[lab]
+    
+    def compute_rv_model(self, pv, times=None):
+        times_rv1 = times if times is not None else self.data_rv1["time"]
+        times_rv2 = times if times is not None else self.data_rv2["time"]
+        times_rv3 = times if times is not None else self.data_rv3["time"]
+        T0 = self.get_jump_parameter_value(pv, 't0_p1')
+        P = self.get_jump_parameter_value(pv, 'P_p1')
+        gamma1 = self.get_jump_parameter_value(pv, 'gamma_rv1')
+        gamma2 = self.get_jump_parameter_value(pv, 'gamma_rv2')
+        gamma3 = self.get_jump_parameter_value(pv, 'gamma_rv3')
+        K = self.get_jump_parameter_value(pv, 'K_p1')
+        e = self.get_jump_parameter_value(pv, 'ecc_p1')
+        w = self.get_jump_parameter_value(pv, 'omega_p1')
+        rv1 = get_rv_curve(times_rv1, P=P, tc=T0, e=e, omega=w, K=K) + gamma1
+        rv2 = get_rv_curve(times_rv2, P=P, tc=T0, e=e, omega=w, K=K) + gamma2
+        rv3 = get_rv_curve(times_rv3, P=P, tc=T0, e=e, omega=w, K=K) + gamma3
+        self.rv = {"rv1": rv1, "rv2": rv2, "rv3": rv3}
+        return self.rv
+
+    def compute_transit_model(self, pv, times=None):
+        if times is None:
+            times = self.data_phot["time"]
+        T0 = self.get_jump_parameter_value(pv, 't0_p1')
+        P = self.get_jump_parameter_value(pv, 'P_p1')
+        ii = self.get_jump_parameter_value(pv, 'inc_p1')
+        rprs = self.get_jump_parameter_value(pv, 'p_p1')
+        aRs = self.get_jump_parameter_value(pv, 'a_p1')
+        e = self.get_jump_parameter_value(pv, 'ecc_p1')
+        omega = self.get_jump_parameter_value(pv, 'omega_p1')
+        u1 = self.get_jump_parameter_value(pv, 'u1')
+        u2 = self.get_jump_parameter_value(pv, 'u2')
+        u = [u1, u2]
+        exptime = self.get_jump_parameter_value(pv, 'exptime') / 86400.  # exptime in days
+        self.lc = get_lc_batman(times, T0, P, ii, rprs, aRs, e, omega, u, supersample_factor=7, exp_time=exptime, limbdark="quadratic")
+        return self.lc
+
+    def __call__(self, pv):
+        if any(pv < self.ps_vary.pmins) or any(pv > self.ps_vary.pmaxs):
+            return -np.inf
+
+        # RV Model
+        rv_model = self.compute_rv_model(pv)
+        jitter_rv1 = self.get_jump_parameter_value(pv, 'sigma_rv1')
+        jitter_rv2 = self.get_jump_parameter_value(pv, 'sigma_rv2')
+        jitter_rv3 = self.get_jump_parameter_value(pv, 'sigma_rv3')
+        error_rv1 = np.sqrt(self.data_rv1['error']**2. + jitter_rv1**2.)
+        error_rv2 = np.sqrt(self.data_rv2['error']**2. + jitter_rv2**2.)
+        error_rv3 = np.sqrt(self.data_rv3['error']**2. + jitter_rv3**2.)
+        log_of_rv_model_rv1 = ll_normal_ev_py(self.data_rv1["y"], rv_model["rv1"], error_rv1)
+        log_of_rv_model_rv2 = ll_normal_ev_py(self.data_rv2["y"], rv_model["rv2"], error_rv2)
+        log_of_rv_model_rv3 = ll_normal_ev_py(self.data_rv3["y"], rv_model["rv3"], error_rv3)
+        log_of_rv_model = log_of_rv_model_rv1 + log_of_rv_model_rv2 + log_of_rv_model_rv3
+
+        # Transit Model
+        phot_model = self.compute_transit_model(pv)
+        jitter_phot = self.get_jump_parameter_value(pv, 'sigma_tr1')
+        error_phot = np.sqrt(self.data_phot['error']**2. + jitter_phot**2.)
+        log_of_phot_model = ll_normal_ev_py(self.data_phot["y"], phot_model, error_phot)
+
+        # Priors
+        log_of_priors = self.ps_vary.c_log_prior(pv)
+
+        # Combined Log-Likelihood
+        log_ln = log_of_priors + log_of_rv_model + log_of_phot_model
+        return log_ln
+    
+###########################################################################################################################################################################################
+###########################################################################################################################################################################################
 ###########################################################################################################################################################################################
 ###########################################################################################################################################################################################
