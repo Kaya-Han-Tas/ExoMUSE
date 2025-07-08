@@ -2774,7 +2774,7 @@ class RMHirano(object):
         else:
             return v
 
-class LPFunctionRM(object):
+class LPFunctionRVOnlyRM(object):
     """
     Log-Likelihood function class
 
@@ -2994,7 +2994,7 @@ class LPFunctionRM(object):
         log_ln = log_of_priors + log_of_model
         return log_ln
 
-class ExoMUSEFitRM(object):
+class ExoMUSEfitRM(object):
     """
     A class that does RM fitting.
 

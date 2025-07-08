@@ -1,0 +1,9 @@
+P_p1                  Normal            4.4379637,0.000002
+tp_p1                 Normal            2455004.00835,0.00002
+ecc_p1                Uniform           0,0.9
+omega_p1              Uniform           0.0,360
+K_p1                  Uniform           0.0,100.0 
+gamma                 Uniform           -100.,100.
+sigma_rv              FIXED             0.          
+gammadot              FIXED             0.          
+gammadotdot           FIXED             0.          
