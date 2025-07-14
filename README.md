@@ -14,7 +14,7 @@
 * **data**
   * Contains the example datasets alongside the datasets of TOI-2431 b.
 * **notebooks**
-  * Contains notebook tutorials on how to use ExoMUSE for modelling alongside the analyses conducted for the discovery paper of TOI-2431 b (see [discovery paper of TOI-2431 b](https://arxiv.org/abs/2507.08464)).
+  * Contains notebook tutorials on how to use ExoMUSE for modelling alongside the analyses conducted for the [discovery paper of TOI-2431 b](https://arxiv.org/abs/2507.08464).
 * **nsstools**
   * Contains the `nsstools` code.
 
