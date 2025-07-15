@@ -26,3 +26,7 @@
 * radvel (`pip install radvel`)
 * corner (`pip install corner`)
 * astropy (`pip install astropy`)
+
+## Citation
+If you use this code, please cite:
+* **[Taş et al. (2025)](https://arxiv.org/abs/2507.08464)**
