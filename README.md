@@ -1,5 +1,6 @@
 # ExoMUSE
 **Exoplanet Modelling and Understanding for Science and Education**
+A tool for Radial Velocity, Transit and Astrometry analyses, using Markov Chain Monte Carlo (MCMC) and Bayesian Inference.
 
 ## Capabilities
 * Radial Velocity Modelling
@@ -28,5 +29,5 @@
 * astropy (`pip install astropy`)
 
 ## Citation
-If you use this code, please cite:
+If you use the ExoMUSE code package, please cite:
 * **[Taş et al. (2025)](https://arxiv.org/abs/2507.08464)**
