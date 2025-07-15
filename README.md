@@ -1,5 +1,5 @@
 # ExoMUSE
-**Exoplanet Modelling and Understanding for Science and Education**
+**Exoplanet Modelling and Understanding for Science and Education**  
 A tool for Radial Velocity, Transit and Astrometry analyses, using Markov Chain Monte Carlo (MCMC) and Bayesian Inference.
 
 ## Capabilities
